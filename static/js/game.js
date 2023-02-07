@@ -1,3 +1,12 @@
+// TODO: refactor code into a class
+// function Game() {
+
+// }
+
+// function Connection() {
+
+// }
+
 
 // fetching the user parameters rendered into the html from the backend
 var roomCode = document.getElementById('game_board').getAttribute('room_code');
@@ -8,8 +17,10 @@ var connectionString = `ws://${window.location.host}/ws/game/${roomCode}/`;
 var gameSocket = new WebSocket(connectionString);
 
 // define the board and other parameters for game play
-var boardSize = 49
-var gameBoard = [-1]*boardSize;
+var boardLength = 7
+var boardHeight = 7
+var boardSize = boardLength*boardHeight
+var gameBoard = new Array(boardSize).fill(-1)
 winIndices = [
     [0, 1, 2],
     [3, 4, 5],
@@ -20,6 +31,7 @@ winIndices = [
     [0, 4, 8],
     [2, 4, 6]
 ]
+
 let moveCount = 0;
 let myturn = true;
 
@@ -45,12 +57,26 @@ for (var i = 0; i < elementArray.length; i++){
 // function implementing how to make a move on the board
 // TODO: check if move is valid
 
-function valid_move(index, player) {
-    // check if the move is on top of another move or the first from the side
-    // check that its not in the middle without any 
+function valid_move(index) {
+    // check if the tile already has a move
+    if (gameBoard[index] != -1) { return false }
+
+    // check if the move is the first from the side
+    if (index % 7 === 0 || (index+1) % 7 === 0) { 
+        return true 
+    } else if (gameBoard[index-1] === -1 && gameBoard[index+1] === -1) {
+        // check if the move is on top of another move and not in the middle
+        // without any neighboring filled tile
+        // if (!((index - 1) < 0) && Math.floor((index - 1)/7) == Math.floor(index/7) ) {
+        return false
+    }
+    return true  
 }
 
 function make_move(index, player){
+    // check if valid move
+    if( !valid_move(index) ) { return false }
+
     index = parseInt(index);
     let data = {
         "event": "MOVE",
@@ -73,11 +99,11 @@ function make_move(index, player){
         gameSocket.send(JSON.stringify(data))
     }
 
-    // set the valu within the tile div to the player character
+    // set the value within the tile div to the player character
     elementArray[index].innerHTML = player;
     
     // check winner
-    const win = checkWinner();
+    const win = checkWinner(index);
 
     // if my turn check if end of game and send data back to backend
     if(myturn){
@@ -101,7 +127,7 @@ function make_move(index, player){
 
 // reset the board to game start state
 function reset(){
-    gameBoard = [-1]*boardSize;
+    gameBoard = new Array(boardSize).fill(-1)
     moveCount = 0;
     myturn = true;
     document.getElementById("alert_move").style.display = 'inline';        
@@ -111,26 +137,113 @@ function reset(){
 }
 
 // method checking if theres a match in winning conditions
-const check = (winIndex) => {
-    if (
-      gameBoard[winIndex[0]] !== -1 &&
-      gameBoard[winIndex[0]] === gameBoard[winIndex[1]] &&
-      gameBoard[winIndex[0]] === gameBoard[winIndex[2]]
-    )   return true;
-    return false;
-};
+// const check = (winIndex) => {
+//     if (
+//       gameBoard[winIndex[0]] !== -1 &&
+//       gameBoard[winIndex[0]] === gameBoard[winIndex[1]] &&
+//       gameBoard[winIndex[0]] === gameBoard[winIndex[2]]
+//     )   return true;
+//     return false;
+// };
+
+function check_left(index) {
+    row_start_index = (Math.floor(index/boardLength))*boardLength
+
+    check_end_index = index - 4
+    if (check_end_index < row_start_index) { return false } 
+    for (i=index; i>=check_end_index; i--) {
+        if(gameBoard[i] !== gameBoard[index]) { return false}
+    }
+    
+    return true
+}
+
+function check_right(index) {
+    row_end_index = (Math.floor(index/boardLength)+1)*boardLength - 1
+
+    check_end_index = index + 4
+    if (check_end_index > row_end_index) { return false } 
+    for (i=index; i<=check_end_index; i++) {
+        if(gameBoard[i] !== gameBoard[index]) { return false}
+    }
+    
+    return true
+}
+
+function check_top(index) {
+    col_start_index = Math.floor(index/boardLength) + (index - (Math.floor(index/boardLength))*boardLength)
+    
+    check_end_index = index - 4*boardLength
+    if (check_end_index < 0) { return false } 
+    for (i=index; i>=check_end_index; i-=boardLength) {
+        if(gameBoard[i] !== gameBoard[index]) { return false}
+    }
+    
+    return true
+}
+
+function check_bottom(index) {
+    col_end_index = Math.floor(index/boardLength) + (index - (Math.floor(index/boardLength))*boardLength)
+    
+    check_end_index = index + 4*boardLength
+    if (check_end_index > (boardSize-1)) { return false } 
+    for (i=index; i<=check_end_index; i+=boardLength) {
+        if(gameBoard[i] !== gameBoard[index]) { return false}
+    }
+    
+    return true
+}
+
+function check_left_diag(index) {
+    row_start_index = (Math.floor(index/boardLength))*boardLength
+    
+    if ((index - row_start_index < 4) || row_start_index < 4) { return false }
+    check_end_index = index - 4*(boardLength+1)
+    for (i=index; i>=check_end_index; i-=(boardLength+1)) {
+        if(gameBoard[i] !== gameBoard[index]) { return false}
+    }
+
+    return true
+}
+
+function check_right_diag(index) {
+    row_start_index = (Math.floor(index/boardLength))*boardLength
+    row_end_index = (Math.floor(index/boardLength)+1)*boardLength - 1
+
+    if ((row_end_index - index < 4) || (boardHeight - row_start_index - 1) < 4) { return false }
+    check_end_index = index + 4*(boardLength+1)
+    for (i=index; i<=check_end_index; i+=(boardLength+1)) {
+        if(gameBoard[i] !== gameBoard[index]) { return false}
+    }
+
+    return true
+}
 
 // check if there is a winner
-function checkWinner(){
+function checkWinner(index){
     let win = false;
-    if (moveCount >= 5) {
-      winIndices.forEach((w) => {
-        if (check(w)) {
-          win = true;
-          windex = w;
-        }
-      });
+    // check if after making the move at the current index 
+    // if that has nearby matching neighbors of upto 4 continous tiles:
+    // left to right
+    // top to bottom
+    // diagonally
+    // when the element is the last
+    // when the element is third
+    // when the element is second
+
+    // if (index % 7 === 0) { 
+    //     // check up, down, diagonal up right, diagonal down right
+    // }
+
+    // if ((index+1) % 7 === 0) {
+    //     // check up, down, diagonal up left, diagonal down left
+    // }
+
+    // for all other places
+    if ( check_left(index) || check_right(index) || check_top(index) || check_bottom(index) || check_left_diag(index) || check_right_diag(index)) {
+        win = true
     }
+
     return win;
 }
 
