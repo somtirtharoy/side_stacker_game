@@ -45,7 +45,6 @@ for (var i = 0; i < elementArray.length; i++){
                 alert("Wait for other to place the move")
             }
             else{
-                myturn = false;
                 document.getElementById("alert_move").style.display = 'none'; // Hide          
                 make_move(index, char_choice);
             }
@@ -59,7 +58,9 @@ for (var i = 0; i < elementArray.length; i++){
 
 function valid_move(index) {
     // check if the tile already has a move
-    if (gameBoard[index] != -1) { return false }
+    if (gameBoard[index] !== -1) { 
+        return false 
+    }
 
     // check if the move is the first from the side
     if (index % 7 === 0 || (index+1) % 7 === 0) { 
@@ -74,10 +75,16 @@ function valid_move(index) {
 }
 
 function make_move(index, player){
-    // check if valid move
-    if( !valid_move(index) ) { return false }
-
+    // convert index into integer
     index = parseInt(index);
+    
+    // check if valid move
+    if( !valid_move(index) ) { 
+        alert("Invalid Move!")
+        myturn = true
+        return false 
+    }
+
     let data = {
         "event": "MOVE",
         "message": {
@@ -104,9 +111,12 @@ function make_move(index, player){
     
     // check winner
     const win = checkWinner(index);
+    console.log("Win: ", win)
 
     // if my turn check if end of game and send data back to backend
+    console.log("myturn after checking win", myturn)
     if(myturn){
+        console.log("win inside condition", win)
         if(win){
             data = {
                 "event": "END",
@@ -114,7 +124,7 @@ function make_move(index, player){
             }
             gameSocket.send(JSON.stringify(data))
         }
-        else if(!win && moveCount == 9){
+        else if(!win && moveCount == 49){
             data = {
                 "event": "END",
                 "message": "It's a draw. Play again?"
@@ -122,6 +132,7 @@ function make_move(index, player){
             gameSocket.send(JSON.stringify(data))
         }
     }
+    myturn = false
 }
 
 
@@ -221,25 +232,14 @@ function check_right_diag(index) {
 
 // check if there is a winner
 function checkWinner(index){
+    // let the default result if it is a win or not be false
     let win = false;
     // check if after making the move at the current index 
     // if that has nearby matching neighbors of upto 4 continous tiles:
-    // left to right
-    // top to bottom
-    // diagonally
-    // when the element is the last
-    // when the element is third
-    // when the element is second
+    // to the left abd to the right
+    // towrds top and towards bottom
+    // both diagonals
 
-    // if (index % 7 === 0) { 
-    //     // check up, down, diagonal up right, diagonal down right
-    // }
-
-    // if ((index+1) % 7 === 0) {
-    //     // check up, down, diagonal up left, diagonal down left
-    // }
-
-    // for all other places
     if ( check_left(index) || check_right(index) || check_top(index) || check_bottom(index) || check_left_diag(index) || check_right_diag(index)) {
         win = true
     }
@@ -283,7 +283,8 @@ function connect() {
                 break;
             case "MOVE":
                 if(message["player"] != char_choice){
-                    make_move(message["index"], message["player"])
+                    // make_move(message["index"], message["player"])
+                    elementArray[message["index"]].innerHTML = message["player"];
                     myturn = true;
                     document.getElementById("alert_move").style.display = 'inline';        
                 }

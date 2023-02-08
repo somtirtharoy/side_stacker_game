@@ -1,30 +1,30 @@
 import json
-from channels.generic.websocket import WebsocketConsumer
-from asgiref.sync import async_to_sync
+from channels.generic.websocket import WebsocketConsumer, AsyncJsonWebsocketConsumer
+# from asgiref.sync import async_to_sync
 
-class GameConsumer(WebsocketConsumer):
+class GameConsumer(AsyncJsonWebsocketConsumer):
 
-    def connect(self):
+    async def connect(self):
         print("Connected")
         self.room_name = self.scope['url_route']['kwargs']['room_code']
         self.room_group_name = 'room_%s' % self.room_name
         
         # Join room group
-        async_to_sync(self.channel_layer.group_add)(
+        await self.channel_layer.group_add(
             self.room_group_name,
             self.channel_name
         )
-        self.accept()
+        await self.accept()
 
-    def disconnect(self, close_code):
+    async def disconnect(self, close_code):
         print("Disconnected")
         # Leave room group
-        async_to_sync(self.channel_layer.group_discard)(
+        await self.channel_layer.group_discard(
             self.room_group_name,
             self.channel_name
         )
     
-    def receive(self, text_data):
+    async def receive(self, text_data):
         """
         Receive message from WebSocket.
         Get the event and send the appropriate event
@@ -35,15 +35,16 @@ class GameConsumer(WebsocketConsumer):
         message = response.get("message", None)
         
         # Send message to room group
-        async_to_sync(self.channel_layer.group_send)(self.room_group_name, {
+        await self.channel_layer.group_send(self.room_group_name, {
             'type': 'send_message',
             'message': message,
             'event': event
         })
 
-    def send_message(self, res):
+    async def send_message(self, res):
+        print(res)
         """ Receive message from room group """
         # Send message to WebSocket
-        self.send(text_data=json.dumps({
+        await self.send(text_data=json.dumps({
             "payload": res,
         }))
