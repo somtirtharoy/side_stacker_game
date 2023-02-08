@@ -1,6 +1,5 @@
 import json
-from channels.generic.websocket import WebsocketConsumer, AsyncJsonWebsocketConsumer
-# from asgiref.sync import async_to_sync
+from channels.generic.websocket import AsyncJsonWebsocketConsumer
 
 class GameConsumer(AsyncJsonWebsocketConsumer):
 
