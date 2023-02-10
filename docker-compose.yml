@@ -1,9 +1,28 @@
 version: '3'
+
+volumes:
+  postgres_data:
+
 services:
   app:
     build: 
       context: ./
       dockerfile: ./docker/app/Dockerfile 
+    command: python manage.py runserver 0.0.0.0:8001
+    volumes:
+      - ./:/code/
     ports:
       - "8001:8001"
-    command: python manage.py runserver 0.0.0.0:8001
+    env_file:
+      - secrets.env
+    restart: always
+    depends_on:
+      - db
+  db:
+    image: postgres:13
+    volumes:
+      - postgres_data:/var/lib/postgresql/data/
+    environment:
+      - POSTGRES_DB=side_stacker
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
