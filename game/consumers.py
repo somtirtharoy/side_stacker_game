@@ -6,7 +6,7 @@ class GameConsumer(AsyncJsonWebsocketConsumer):
     async def connect(self):
         print("Connected")
         self.room_name = self.scope['url_route']['kwargs']['room_code']
-        self.room_group_name = 'room_%s' % self.room_name
+        self.room_group_name = f'room_{self.room_name}'
         
         # Join room group
         await self.channel_layer.group_add(
@@ -24,6 +24,7 @@ class GameConsumer(AsyncJsonWebsocketConsumer):
         )
     
     async def receive(self, text_data):
+        print("Received")
         """
         Receive message from WebSocket.
         Get the event and send the appropriate event
@@ -41,7 +42,6 @@ class GameConsumer(AsyncJsonWebsocketConsumer):
         })
 
     async def send_message(self, res):
-        print(res)
         """ Receive message from room group """
         # Send message to WebSocket
         await self.send(text_data=json.dumps({

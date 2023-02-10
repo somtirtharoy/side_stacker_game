@@ -8,8 +8,7 @@ def index(request):
         room_code = request.POST.get("room_code")
         char_choice = request.POST.get("character_choice")
         return redirect(
-            '/game/%s?&choice=%s'
-            %(room_code, char_choice)
+            f'/game/{room_code}?&choice={char_choice}'
         )
         
     return render(request, 'index.html')

@@ -6,7 +6,7 @@ class Game {
         this.boardSize = boardLength*boardHeight
         this.gameBoard = new Array(this.boardSize).fill(-1)
 
-        this.moveCount = 0;
+        this.moveCount = 0
         // contains all the html tile elements 
         this.elementArray = null
         this.addEventListenerToTiles()
@@ -14,17 +14,17 @@ class Game {
 
     addEventListenerToTiles() {
         // adding event listeners to the tiles on the board to trigger on user interaction
-        this.elementArray = document.getElementsByClassName('square');
+        this.elementArray = document.getElementsByClassName('square')
         for (var i = 0; i < this.elementArray.length; i++){
             this.elementArray[i].addEventListener("click", event=>{
-                const index = event.target.getAttribute('data-index');
+                const index = event.target.getAttribute('data-index')
                 if(this.gameBoard[index] == -1){
                     if(!myturn){
                         alert("Wait for other to place the move")
                     }
                     else{
-                        document.getElementById("alert_move").style.display = 'none'; // Hide          
-                        this.make_move(index, char_choice);
+                        document.getElementById("alert_move").style.display = 'none' // Remove the alert          
+                        this.make_move(index, char_choice)
                     }
                 }
             })
@@ -52,7 +52,7 @@ class Game {
     // function implementing how to make a move on the board
     make_move(index, player){
         // convert index into integer
-        index = parseInt(index);
+        index = parseInt(index)
         
         // check if valid move if move is by current player
         if(player === char_choice) {
@@ -64,7 +64,7 @@ class Game {
         }
 
         // create the data to be transmitted to the backend via the websocket channel
-        let data = {
+        var data = {
             "event": "MOVE",
             "message": {
                 "index": index,
@@ -73,24 +73,23 @@ class Game {
         }
         
         if(this.gameBoard[index] == -1){
-            this.moveCount++;
+            this.moveCount++
             if(player == 'X') {
-                this.gameBoard[index] = 1;
+                this.gameBoard[index] = 1
             } else if(player == 'O') {
-                this.gameBoard[index] = 0;
+                this.gameBoard[index] = 0
             } else {
-                alert("Invalid character choice");
-                return false;
+                alert("Invalid character choice")
+                return false
             }
             gameSocket.send(JSON.stringify(data))
         }
 
         // set the value within the tile div to the player character
-        this.elementArray[index].innerHTML = player;
+        this.elementArray[index].innerHTML = player
         
         // check winner
-        const win = this.checkWinner(index);
-        console.log("Win: ", win)
+        const win = this.checkWinner(index)
 
         // if my turn check if end of game and send data back to backend
         if(myturn){
@@ -100,8 +99,7 @@ class Game {
                     "message": `${player} is a winner. Play again?`
                 }
                 gameSocket.send(JSON.stringify(data))
-            }
-            else if(!win && this.moveCount == 49){
+            } else if(!win && this.moveCount == 49){
                 data = {
                     "event": "END",
                     "message": "It's a draw. Play again?"
@@ -109,6 +107,8 @@ class Game {
                 gameSocket.send(JSON.stringify(data))
             }
         }
+
+        // change myturn to false
         myturn = false
     }
 
@@ -116,11 +116,13 @@ class Game {
     // reset the board to game start state
     reset(){
         this.gameBoard = new Array(this.boardSize).fill(-1)
-        this.moveCount = 0;
-        myturn = true;
-        document.getElementById("alert_move").style.display = 'inline';        
+        this.moveCount = 0
+        myturn = true
+        // endgame = false
+        // document.getElementById("alert_move").style.display = 'inline'        
+        document.getElementById("alert_move").style.display = 'none' 
         for (var i = 0; i < this.elementArray.length; i++){
-            this.elementArray[i].innerHTML = "";
+            this.elementArray[i].innerHTML = ""
         }
     }
 
@@ -175,7 +177,6 @@ class Game {
         
         if ((index - row_start_index < 3) || row_index < 3) { return false }
         var check_end_index = index - 3*(this.boardLength+1)
-        console.log('check_end_index: ', check_end_index)
         for (var i=index; i>=check_end_index; i-=(this.boardLength+1)) {
             if(this.gameBoard[i] !== this.gameBoard[index]) { return false}
         }
@@ -222,7 +223,7 @@ class Game {
     // check if there is a winner
     checkWinner(index){
         // let the default result if it is a win or not be false
-        let win = false;
+        var win = false
 
         // check if after making the move at the current index 
         // if that has nearby matching neighbors of upto 4 continous tiles:
@@ -242,7 +243,7 @@ class Game {
             win = true
         }
 
-        return win;
+        return win
     }
 
 }
@@ -251,50 +252,58 @@ class Game {
 function connect() {
     // on new connection send start event to the backend
     gameSocket.onopen = function open() {
-        console.log('WebSockets connection created.');
+        console.log('WebSockets connection created.')
         gameSocket.send(JSON.stringify({
             "event": "START",
             "message": ""
-        }));
-    };
+        }))
+        endgame = false
+    }
 
     // on connection close try to connect after a timeout of 1 second
     gameSocket.onclose = function (e) {
-        console.log('Socket is closed. Reconnect will be attempted in 1 second.', e.reason);
+        console.log('Socket is closed. Reconnect will be attempted in 1 second.', e.reason)
         setTimeout(function () {
-            connect();
-        }, 1000);
-    };
+            connect()
+        }, 1000)
+    }
 
     // Sending the info about the room
     gameSocket.onmessage = function (e) {
-        let data = JSON.parse(e.data);
-        data = data["payload"];
-        let message = data['message'];
-        let event = data["event"];
+        var data = JSON.parse(e.data)
+        data = data["payload"]
+        var message = data['message']
+        var event = data["event"]
         switch (event) {
             case "START":
-                game.reset();
-                break;
+                game.reset()
+                break
             case "END":
-                alert(message);
-                game.reset();
-                break;
+                endgame = true
+                alert(message)
+                // setting timeout to allow for the last broadcast of the last move to propagate 
+                // before resetting the websocker connection
+                setTimeout(function () {
+                    gameSocket.onopen()
+                }, 1000)
+                // resetting the game
+                game.reset()
+                break
             case "MOVE":
-                if(message["player"] != char_choice){
+                if(!endgame && message["player"] != char_choice){
                     game.make_move(message["index"], message["player"])
-                    myturn = true;
-                    document.getElementById("alert_move").style.display = 'inline';        
+                    myturn = true
+                    document.getElementById("alert_move").style.display = 'inline'        
                 }
-                break;
+                break
             default:
                 console.log("No event")
         }
-    };
+    }
 
     // call the onopen method when the socket has established connection
     if (gameSocket.readyState == WebSocket.OPEN) {
-        gameSocket.onopen();
+        gameSocket.onopen()
     }
 }
 
@@ -302,18 +311,19 @@ function connect() {
 //=========================================================================
 
 // fetching the user parameters rendered into the html from the backend
-var roomCode = document.getElementById('game_board').getAttribute('room_code');
-var char_choice = document.getElementById('game_board').getAttribute('char_choice');
+var roomCode = document.getElementById('game_board').getAttribute('room_code')
+var char_choice = document.getElementById('game_board').getAttribute('char_choice')
 
 // create the websocket url and connect to it
-var connectionString = `ws://${window.location.host}/ws/game/${roomCode}/`;
-var gameSocket = new WebSocket(connectionString);
+var connectionString = `ws://${window.location.host}/ws/game/${roomCode}/`
+var gameSocket = new WebSocket(connectionString)
 
 // define myturn that keeps track of whose turn it is now
-let myturn = true;
+var myturn = true
+var endgame = false
 
 // Create an instance of the Game class
 game = new Game(7, 7)
 
 // calling the connect method here for the websocket to start listening for events 
-connect();
+connect()
