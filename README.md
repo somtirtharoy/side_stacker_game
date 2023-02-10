@@ -11,7 +11,7 @@ git clone git@github.com:somtirtharoy/side_stacker_game.git
 
 ```
 cd side_stacker_game
-mv secrets.env.example secrets.env
+cp secrets.env.example secrets.env
 ```
 
 3. Edit the secrets.env file to add the necessary details required by django i.e: it should look like:
@@ -29,7 +29,7 @@ SQL_PORT=5432
 
 4. Build the containers to run the app
 ```
-docker-compose up --build
+docker-compose --env-file=secrets.env up --build
 ```
 
 5. Make migrations and migrate
