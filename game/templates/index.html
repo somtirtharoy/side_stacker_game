@@ -1,6 +1,7 @@
 {% extends 'base.html' %}
 {% comment %} index.html {% endcomment %}
 {% block content %}
+{% if user.is_authenticated %}
 <div class="wrapper">
   <h1>The Side-To-Side Connect Four Game</h1>
   <form method="POST">
@@ -19,5 +20,5 @@
     </div>
     <input type="submit" class="button" value="Join Game" />
 </div>
-</form>
+{% endif %}
 {% endblock content %}
