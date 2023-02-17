@@ -37,13 +37,13 @@ class GameConsumer(AsyncJsonWebsocketConsumer):
             data = {
                 'type': 'send_message',
                 'message': message,
+                'question': 'Play again?',
                 'event': event
             }
         else:
             data = {
                 'type': 'send_message',
                 'message': message,
-                'question': 'Play again?',
                 'event': event
             }
         

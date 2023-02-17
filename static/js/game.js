@@ -306,6 +306,7 @@ function connect() {
     gameSocket.onmessage = function (e) {
         var data = JSON.parse(e.data)
         data = data["payload"]
+        console.log(data)
         var message = data['message']
         var question = data['question']
         var event = data["event"]
@@ -315,7 +316,7 @@ function connect() {
                 break
             case "END":
                 endgame = true
-                if (player === '-') {
+                if (char_choice === '-') {
                     alert(`${message} Join again?`)
                 } else {
                     alert(`${message} ${question}`)
