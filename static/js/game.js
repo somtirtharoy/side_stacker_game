@@ -14,20 +14,25 @@ class Game {
 
     addEventListenerToTiles() {
         // adding event listeners to the tiles on the board to trigger on user interaction
-        this.elementArray = document.getElementsByClassName('square')
-        for (var i = 0; i < this.elementArray.length; i++){
-            this.elementArray[i].addEventListener("click", event=>{
-                const index = event.target.getAttribute('data-index')
-                if(this.gameBoard[index] == -1){
-                    if(!myturn){
-                        alert("Wait for other to place the move")
+        // except if it is a spectator in which case no listeners need to be added to the tiles for that user
+        if (char_choice !== '-') { 
+            this.elementArray = document.getElementsByClassName('square')
+            for (var i = 0; i < this.elementArray.length; i++){
+                this.elementArray[i].addEventListener("click", event=>{
+                    const index = event.target.getAttribute('data-index')
+                    if(this.gameBoard[index] == -1){
+                        if(!myturn){
+                            alert("Wait for other to place the move")
+                        }
+                        else{
+                            document.getElementById("alert_move").style.display = 'none' // Remove the alert          
+                            this.make_move(index, char_choice)
+                        }
                     }
-                    else{
-                        document.getElementById("alert_move").style.display = 'none' // Remove the alert          
-                        this.make_move(index, char_choice)
-                    }
-                }
-            })
+                })
+            }
+        } else {
+            this.elementArray = document.getElementsByClassName('square') 
         }
     }
     
@@ -54,7 +59,8 @@ class Game {
         // convert index into integer
         index = parseInt(index)
         
-        // check if valid move if move is by current player
+        // check if the move is valid if move is by current player
+        // as move ny the other player is already validated
         if(player === char_choice) {
             if( !this.valid_move(index) ) { 
                 alert("Invalid Move!")
@@ -63,6 +69,36 @@ class Game {
             }
         }
 
+        if(this.gameBoard[index] == -1){
+            // send move update to backend for boradcasting across the websocket channel
+            this.send_board_updates(index, player)
+
+            // update board variable and the html
+            this.update_board(index, player)
+        }
+        
+        // check winner
+        this.checkWinner(index, player)
+        
+        // change myturn to false so that other player can play
+        myturn = false
+    }
+
+    make_spectator_move(index, player) {
+        // convert index into integer
+        index = parseInt(index)
+
+        // set the value within the tile div to the player character
+        this.elementArray[index].innerHTML = player
+
+    }
+
+    update_board(index, player) {
+        // set the value within the tile div to the player character
+        this.elementArray[index].innerHTML = player
+    }
+
+    send_board_updates(index, player) {
         // create the data to be transmitted to the backend via the websocket channel
         var data = {
             "event": "MOVE",
@@ -71,45 +107,19 @@ class Game {
                 "player": player
             }
         }
-        
-        if(this.gameBoard[index] == -1){
-            this.moveCount++
-            if(player == 'X') {
-                this.gameBoard[index] = 1
-            } else if(player == 'O') {
-                this.gameBoard[index] = 0
-            } else {
-                alert("Invalid character choice")
-                return false
-            }
-            gameSocket.send(JSON.stringify(data))
+
+        // if no move had been made at the index update the 
+        // gameBoard variable and the HTML
+        this.moveCount++
+        if(player == 'X') {
+            this.gameBoard[index] = 1
+        } else if(player == 'O') {
+            this.gameBoard[index] = 0
+        } else {
+            alert("Invalid character choice")
+            return false
         }
-
-        // set the value within the tile div to the player character
-        this.elementArray[index].innerHTML = player
-        
-        // check winner
-        const win = this.checkWinner(index)
-
-        // if my turn check if end of game and send data back to backend
-        if(myturn){
-            if(win){
-                data = {
-                    "event": "END",
-                    "message": `${player} is a winner. Play again?`
-                }
-                gameSocket.send(JSON.stringify(data))
-            } else if(!win && this.moveCount == 49){
-                data = {
-                    "event": "END",
-                    "message": "It's a draw. Play again?"
-                }
-                gameSocket.send(JSON.stringify(data))
-            }
-        }
-
-        // change myturn to false
-        myturn = false
+        gameSocket.send(JSON.stringify(data))
     }
 
 
@@ -220,15 +230,39 @@ class Game {
         return true
     }
 
+    checkWinner(index, player) {
+        const win = this.didWin(index) 
+
+        // if my turn check if end of game and send data back to backend
+        if(myturn){
+            if(win){
+                var message = `${player} is a winner.`
+                var data = {
+                    "event": "END",
+                    "message": message
+                }
+                gameSocket.send(JSON.stringify(data))
+            } else if(!win && this.moveCount == 49){
+                var message = "It's a draw."
+                var data = {
+                    "event": "END",
+                    "message": message
+                }
+                gameSocket.send(JSON.stringify(data))
+            }
+        }
+
+    }
+
     // check if there is a winner
-    checkWinner(index){
+    didWin(index){
         // let the default result if it is a win or not be false
         var win = false
 
         // check if after making the move at the current index 
         // if that has nearby matching neighbors of upto 4 continous tiles:
         // to the left abd to the right
-        // towrds top and towards bottom
+        // towards top and towards bottom
         // both diagonals
 
         if (this.check_left(index) || 
@@ -273,6 +307,7 @@ function connect() {
         var data = JSON.parse(e.data)
         data = data["payload"]
         var message = data['message']
+        var question = data['question']
         var event = data["event"]
         switch (event) {
             case "START":
@@ -280,7 +315,11 @@ function connect() {
                 break
             case "END":
                 endgame = true
-                alert(message)
+                if (player === '-') {
+                    alert(`${message} Join again?`)
+                } else {
+                    alert(`${message} ${question}`)
+                }
                 // setting timeout to allow for the last broadcast of the last move to propagate 
                 // before resetting the websocker connection
                 setTimeout(function () {
@@ -290,7 +329,9 @@ function connect() {
                 game.reset()
                 break
             case "MOVE":
-                if(!endgame && message["player"] != char_choice){
+                if(!endgame && message["player"] === '-'){
+                    game.make_spectator_move(message["index"], message["player"])
+                } else if(!endgame && message["player"] != char_choice){
                     game.make_move(message["index"], message["player"])
                     myturn = true
                     document.getElementById("alert_move").style.display = 'inline'        
@@ -320,6 +361,7 @@ var gameSocket = new WebSocket(connectionString)
 
 // define myturn that keeps track of whose turn it is now
 var myturn = true
+
 var endgame = false
 
 // Create an instance of the Game class

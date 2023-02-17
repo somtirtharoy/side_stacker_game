@@ -16,7 +16,7 @@ def index(request):
 def game(request, room_code):
     board_size = 49
     choice = request.GET.get("choice")
-    if choice not in ['X', 'O']:
+    if choice not in ['X', 'O', '-']:
         raise Http404("Choice does not exists")
 
     context = {
