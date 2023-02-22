@@ -6,18 +6,25 @@
   <form method="POST">
     {% csrf_token %}
     <div class='form-control'>
+      <input id="user_name" name="user_name" type="hidden" value={{user.username}}></input>
+    </div>
+    <div class='form-control'>
       <label for="room">Room id</label>
-      <input id="room" type="text" name="room_code" required />
+      <select for="room_code" name = "room_code">
+        {% for room in room_list %}
+          <option value={{room}}>Room: {{room}}</option>
+        {% endfor %}
+      </select>
+      <a href="{% url 'new_room' %}">+ Create Room</a>
     </div>
     <div class='form-control'>
       <label for="character_choice">Your character</label>
       <select for="character_choice" name = "character_choice">
-      <option value="X">Player 1 - X</option>
-      <option value="O">Player 2 - O</option>
-      <option value="-">Spectator</option>
+        <option value="X">Player 1 - X</option>
+        <option value="O">Player 2 - O</option>
+        <option value="-">Spectator</option>
       </select>
     </div>
     <input type="submit" class="button" value="Join Game" />
 </div>
-</form>
 {% endblock content %}
