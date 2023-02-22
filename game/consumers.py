@@ -1,5 +1,11 @@
 import json
 from channels.generic.websocket import AsyncJsonWebsocketConsumer
+from channels.db import database_sync_to_async
+from django.contrib.auth import get_user_model
+from .models import Game
+from datetime import datetime
+
+User = get_user_model()
 
 class GameConsumer(AsyncJsonWebsocketConsumer):
 
@@ -34,6 +40,9 @@ class GameConsumer(AsyncJsonWebsocketConsumer):
         event = response.get("event", None)
         message = response.get("message", None)
         if event == 'END':
+            # save end game
+            await self.save_game(response)
+
             data = {
                 'type': 'send_message',
                 'message': message,
@@ -49,9 +58,24 @@ class GameConsumer(AsyncJsonWebsocketConsumer):
         
         # Send message to room group
         await self.channel_layer.group_send(self.room_group_name, data)
+    
+    @database_sync_to_async
+    def save_game(data):
+        board = data['game']
+        timestamp = datetime.now()
+        username = data['username']
+        room_code = data['room_code']
+        user = User.objects.filter(username=username)[0]
+        game = Game.objects.get_or_create(
+            board=board,
+            timestamp=timestamp,
+            user=user,
+            room=room_code
+        )
+        game.save()
 
     async def send_message(self, res):
-        """ Receive message from room group """
+        """Receive message from room group"""
         # Send message to WebSocket
         await self.send(text_data=json.dumps({
             "payload": res,

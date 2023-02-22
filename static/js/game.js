@@ -239,7 +239,10 @@ class Game {
                 var message = `${player} is a winner.`
                 var data = {
                     "event": "END",
-                    "message": message
+                    "message": message,
+                    "board": this.gameBoard,
+                    "username": user_name,
+                    "room_code": room_code
                 }
                 gameSocket.send(JSON.stringify(data))
             } else if(!win && this.moveCount == 49){
@@ -355,6 +358,7 @@ function connect() {
 // fetching the user parameters rendered into the html from the backend
 var roomCode = document.getElementById('game_board').getAttribute('room_code')
 var char_choice = document.getElementById('game_board').getAttribute('char_choice')
+var user_name = document.getElementById('user_name').getAttribute('user_name')
 
 // create the websocket url and connect to it
 var connectionString = `ws://${window.location.host}/ws/game/${roomCode}/`
